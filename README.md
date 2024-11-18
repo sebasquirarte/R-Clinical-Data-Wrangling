@@ -1,7 +1,8 @@
-# R Clinical Data Wrangling
-Basic data wrangling skills applied to fake clinical trial data using R.
-
 ![Screenshot 2024-11-16 at 5 (4)](https://github.com/user-attachments/assets/c9b3a620-bb3b-4833-bde4-5fade9c87dbf)
+
+## About
+
+Basic data wrangling skills applied to fake clinical trial data using R.
 
 ## Overview
 
