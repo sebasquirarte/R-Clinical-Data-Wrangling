@@ -1,0 +1,157 @@
+---
+title: "Clinical Data Wrangling"
+author: "Sebastian Quirarte | Nov 2024"
+output:
+  html_document:
+    theme: journal
+    toc: true
+  pdf_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview
+
+This R Markdown document aims to show basic data wrangling skills applied to fake clinical trial data. This serves as an example of real-world clinical data wrangling, based on a simplified dataset that has a similar structure to what can be found in data extraction files of EDC systems to implement the eCRF of clincial phase l-lV clinical trials. 
+
+## Data
+
+This example is based on an excel file ('fake-clinical-data.xlsx') that is made up of fake clinical data of 20 subjects and 40 varibles, structured across five excel sheets. In a real clinical trial, these files are significantly larger, include more subjects, variables, and sheets, in some cases including thousands of rows per sheet and dozens of sheets. They can also be found in .xlsx or .csv file formats, depending on the EDC platform implemented. 
+
+## Objective
+
+Every clinical trial will be different, depending on it's primary and secondary objectives, variables, treatments implemented, clinical tests, and other eCRF considerations. 
+
+In this example, the goal is to take the previously mentioned excel file, load the different sheets into R as dataframes, explore, and transform the data into a new dataframe that includes the variables of interest, simplifying statistical analysis, data review, and descriptive analysis of the data and it's use by technical and non-technical users involved in the clinical trial. 
+
+## Loading Packages and Data
+
+```{r message = FALSE, warning = FALSE}
+rm(list = ls()) # delete previously stored variables
+
+# Packages
+library(readxl) # read excel file
+library(openxlsx) # write excel file
+
+# Load excel sheets as dataframes
+demographic <- read_excel('fake-clinical-data.xlsx', sheet = 'demographic')
+baseline <- read_excel('fake-clinical-data.xlsx', sheet = 'baseline')
+variables_l <- read_excel('fake-clinical-data.xlsx', sheet = 'variables_l')
+variables_ll <- read_excel('fake-clinical-data.xlsx', sheet = 'variables_ll')
+variables_lll <- read_excel('fake-clinical-data.xlsx', sheet = 'variables_lll')
+```
+
+## Exploring Dataframes
+
+***demographic***: dataframe of demographic variables of 20 subjects [20 x 7].
+
+```{r}
+str(demographic)
+```
+
+***baseline***: dataframe of baseline variables of 20 subjects [20 x 7]. One row per study subject.
+
+```{r}
+str(baseline)
+```
+
+***variables_l***: dataframe of additional variables of 20 subjects [100 x 12]. Five visits (rows) per study subject.
+```{r}
+str(variables_l)
+```
+
+***variables_ll***: dataframe of additional variables of 20 subjects [100 x 8]. Five visits (rows) per study subject.
+
+```{r}
+str(variables_ll)
+```
+
+***variables_lll***: dataframe of additional variables of 20 subjects [100 x 12]. Five visits (rows) per study subject.
+
+```{r}
+str(variables_lll)
+```
+
+## Missing Data
+The datasets ***variables_l***, ***variables_ll***, and ***variables_lll*** contain empty cells. 
+
+```{r}
+head(variables_l)
+head(variables_ll)
+head(variables_lll)
+```
+
+In a clinical setting it is important to determine why there are missing values, in this case they are not due to data capture error but instead due to the fact that in this example the EDC system creates all five visits (rows) for each subject, even if they still haven't completed all of their visits.
+
+Every scenario is different, in some cases data imputation is the best course of action, in other cases it is best to modify the missing values to a string value, but in this case we identified the reason for missing data and no modifications are necessary at this point. 
+
+## Transforming Data
+
+For this example, let's suppose we are interested in creating a dataframe that includes the following variables:
+
+- ***subject_ID***
+- ***visit***
+- ***sex***
+- ***treat***
+- ***var_1***
+- ***var_17***
+- ***var_24***
+- ***var_28***
+- ***var_40***
+
+These variables are found in different sheets of the original excel file, which we have loaded as individual dataframes. Some dataframes have only one row per subject and others have multiple rows per subject, one for each visit.
+
+Dataframes can be combined using the ***merge()*** function. We'll only select the variables of interest from each dataframe. It is important to note that it is necessary to first add the variables found in the dataframes with repeated rows for each subject, so that all visits are loaded into the dataframe.
+
+```{r}
+# dataframes with multiple rows per subject
+df <- merge(variables_l[c('subject_ID', 'visit', 'var_17', 'var_24')],
+            variables_ll[c('subject_ID', 'visit', 'var_28')])
+df <- merge(df,
+            variables_lll[c('subject_ID', 'visit', 'var_40')])
+
+# display first 10 rows of dataframe
+head(df, 10)
+```
+
+```{r}
+# dataframes with one row per subject
+df <- merge(df,
+            demographic[c('subject_ID', 'sex')])
+df <- merge(df,
+            baseline[c('subject_ID', 'treat', 'var_1')])
+
+# display first 10 rows of dataframe
+head(df, 10)
+```
+
+We now have a transformed dataframe that includes the variables of interest previously mentioned. 
+
+```{r}
+# display first and last rows of dataframe
+head(df, 10)
+tail(df, 10)
+```
+
+## Exporting Transformed Data
+
+Lastly, we'll export the transformed dataframe as an excel file. 
+
+Depending on the coding of the variables, it is sometimes useful to change the column names before exporting, especially if this data is intended for non-technical users sucha as doctors and clinical personnel involved in the clinical trial. In this case variable coding has been very simple but in real-world clinical data extractions variables can be coded in complex and abstarct manners due to the amount of variables involved and often require the use of a codebook that contains variable names and descriptions. 
+
+```{r}
+# change dataframe column names
+colnames(df) <- c('ID', 'Visit', 'Var17', 'Var24', 'Var28', 'Var40', 'Sex', 'Treatment', 'Var1')
+
+# display first and last rows of dataframe
+head(df, 10)
+tail(df, 10)
+```
+
+Now we can export our dataframe as an excel file using the ***write.xlsx()*** function from the ***openxlsx*** package.
+```{r}
+write.xlsx(df, file = 'transformed-df.xlsx')
+```
